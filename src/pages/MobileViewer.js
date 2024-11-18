@@ -1,119 +1,122 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { ARButton } from 'three/examples/jsm/webxr/ARButton';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
-import * as THREE from 'three';
+import { useLoader } from '@react-three/fiber';
+import { XR, ARButton } from '@react-three/xr';
 import { OrbitControls } from '@react-three/drei';
+import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import { initializeApp, getApps } from 'firebase/app';
+import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
 import '../styles/MobileViewer.css';
 
+// Firebase configuration
+const firebaseConfig = {
+  apiKey: "AIzaSyCfWYRWOQyNrn9WGv3Wfz_EM47ZpbL_Yqs",
+  authDomain: "virtual-world-84ce0.firebaseapp.com",
+  projectId: "virtual-world-84ce0",
+  storageBucket: "virtual-world-84ce0.appspot.com",
+  messagingSenderId: "306111432374",
+  appId: "1:306111432374:web:1b7d4cfea3b7ab7ef123f7",
+  measurementId: "G-1K1M3CNJR7"
+};
+
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApps()[0];
+}
+
+const storage = getStorage(app);
+
 const MobileViewer = () => {
-  const [modelUrl, setModelUrl] = useState('');
-  const [isWebXRSupported, setIsWebXRSupported] = useState(false);
-  const canvasRef = useRef(null);
-  const sceneRef = useRef(null);
+  const [modelSrc, setModelSrc] = useState('');
+  const [firebaseFiles, setFirebaseFiles] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const inputFileRef = useRef(null);
 
-  // Check WebXR support
-  useEffect(() => {
-    if (navigator.xr) {
-      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
-        setIsWebXRSupported(supported);
-      });
-    }
-  }, []);
-
-  // Handle file upload
+  // Handle file upload from local storage
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
       const url = URL.createObjectURL(file);
-      setModelUrl(url);
+      setModelSrc(url);
     } else {
       alert('Please upload a .glb or .gltf file');
     }
   };
 
   const triggerFileInput = () => {
-    document.getElementById('fileInput').click();
+    inputFileRef.current.click();
   };
 
-  // Start AR session
-  const startARSession = (renderer) => {
-    if (!renderer || !renderer.xr) {
-      alert('WebXR is not supported on this device.');
-      return;
-    }
-
-    renderer.xr.enabled = true;
-    const arButton = ARButton.createButton(renderer);
-    document.body.appendChild(arButton);
+  const handleFirebaseFileUpload = async (url) => {
+    setLoading(true);
+    setModelSrc(url);
+    setLoading(false);
   };
 
-  // Load 3D model
-  const loadModel = (url, scene) => {
-    const loader = new GLTFLoader();
-    loader.load(
-      url,
-      (gltf) => {
-        const model = gltf.scene;
-        model.position.set(0, 0, -2);
-        scene.add(model);
-      },
-      undefined,
-      (error) => {
-        console.error('Failed to load model:', error);
-        alert('Failed to load 3D model.');
-      }
+  const loadFirebaseFiles = async () => {
+    const listRef = ref(storage, '/');
+    const res = await listAll(listRef);
+    const files = await Promise.all(
+      res.items.map(async (itemRef) => {
+        const url = await getDownloadURL(itemRef);
+        return { name: itemRef.name, url };
+      })
     );
+    setFirebaseFiles(files);
   };
 
-  // Render 3D model in AR
-  const ARScene = () => {
-    const scene = sceneRef.current;
-
-    useEffect(() => {
-      if (modelUrl && scene) {
-        loadModel(modelUrl, scene);
-      }
-    }, [modelUrl, scene]);
-
-    return (
-      <>
-        <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} />
-        <OrbitControls />
-      </>
-    );
-  };
+  useEffect(() => {
+    loadFirebaseFiles();
+  }, []);
 
   return (
     <div className="ar-viewer-container">
-      <button className="upload-button" onClick={triggerFileInput}>
-        Upload 3D Model
-      </button>
+      <button className="upload-button" onClick={triggerFileInput}>Upload 3D Model</button>
       <input
-        id="fileInput"
         type="file"
         accept=".glb,.gltf"
         style={{ display: 'none' }}
+        ref={inputFileRef}
         onChange={handleFileUpload}
       />
+      <div className="firebase-file-selector">
+        <label>Select 3D Model from Firebase:</label>
+        <select onChange={(e) => handleFirebaseFileUpload(e.target.value)}>
+          <option value="">Select a model...</option>
+          {firebaseFiles.map((file) => (
+            <option key={file.url} value={file.url}>
+              {file.name}
+            </option>
+          ))}
+        </select>
+      </div>
 
-      {isWebXRSupported && modelUrl && (
-        <Canvas
-          ref={canvasRef}
-          style={{ width: '100%', height: '100vh' }}
-          onCreated={({ gl, scene }) => {
-            sceneRef.current = scene;
-            startARSession(gl);
-          }}
-          camera={{ position: [0, 1, 3], fov: 60 }}
-        >
-          <ARScene />
-        </Canvas>
+      {modelSrc && (
+        <div className="model-viewer-container">
+          <Canvas style={{ width: '100%', height: '500px' }}>
+            <XR>
+              <ARButton />
+              <ambientLight intensity={0.5} />
+              <directionalLight position={[10, 10, 10]} />
+              <OrbitControls />
+              <Model src={modelSrc} />
+            </XR>
+          </Canvas>
+        </div>
       )}
 
-      {!isWebXRSupported && <p>Your device does not support WebXR.</p>}
+      {loading && <div className="loading">Loading...</div>}
     </div>
+  );
+};
+
+const Model = ({ src }) => {
+  const gltf = useLoader(GLTFLoader, src);
+
+  return (
+    <primitive object={gltf.scene} scale={0.5} position={[0, 0, 0]} />
   );
 };
 
