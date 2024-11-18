@@ -32,8 +32,7 @@ const MobileViewer = () => {
   const [loading, setLoading] = useState(false);
   const containerRef = useRef();
   const [isWebXRSupported, setIsWebXRSupported] = useState(false);
-  let camera, scene, renderer, controller;
-  let model;
+  let camera, scene, renderer, model, controls;
 
   // Initialize Firebase files list
   const loadFirebaseFiles = async () => {
@@ -52,7 +51,7 @@ const MobileViewer = () => {
     loadFirebaseFiles();
   }, []);
 
-  // Initialize WebXR support check
+  // Check WebXR support
   useEffect(() => {
     if (navigator.xr) {
       navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
@@ -69,22 +68,15 @@ const MobileViewer = () => {
     renderer.xr.enabled = true;
     containerRef.current.appendChild(renderer.domElement);
 
-    // AR Button
-    document.body.appendChild(ARButton.createButton(renderer));
-
     // Scene and Camera setup
     scene = new THREE.Scene();
     camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.01, 20);
+    camera.position.set(0, 1.6, 3);
     scene.add(camera);
 
     // Light setup
     const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
     scene.add(light);
-
-    // Controller setup
-    controller = renderer.xr.getController(0);
-    controller.addEventListener('select', onSelect);
-    scene.add(controller);
 
     // Window resize handler
     window.addEventListener('resize', onWindowResize);
@@ -96,7 +88,7 @@ const MobileViewer = () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
   };
 
-  // Load 3D model
+  // Load and display the model
   const loadModel = (url) => {
     const loader = new GLTFLoader();
     loader.load(
@@ -104,7 +96,7 @@ const MobileViewer = () => {
       (gltf) => {
         model = gltf.scene;
         model.scale.set(0.1, 0.1, 0.1);
-        model.position.set(0, 0, -1);
+        model.position.set(0, 0, 0);
         scene.add(model);
       },
       undefined,
@@ -112,15 +104,6 @@ const MobileViewer = () => {
         console.error('Error loading model:', error);
       }
     );
-  };
-
-  // Handle model placement in AR session
-  const onSelect = () => {
-    if (model) {
-      const newPosition = controller.position.clone();
-      model.position.copy(newPosition);
-      model.visible = true;
-    }
   };
 
   // Start AR session
@@ -172,7 +155,6 @@ const MobileViewer = () => {
 
   return (
     <div className="ar-viewer-container" ref={containerRef}>
-      <button className="upload-button" onClick={startARSession}>Start AR Session</button>
       <div className="firebase-file-selector">
         <label>Select 3D Model from Firebase:</label>
         <select onChange={(e) => handleFirebaseFileUpload(e.target.value)}>
@@ -182,6 +164,11 @@ const MobileViewer = () => {
           ))}
         </select>
       </div>
+
+      <button className="view-ar-button" onClick={startARSession}>
+        View in AR
+      </button>
+
       {loading && <div className="loading">Loading...</div>}
     </div>
   );
