@@ -1,7 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Canvas } from '@react-three/fiber';
-import { useLoader } from '@react-three/fiber';
-import { XR, ARButton } from '@react-three/xr';
+import { Canvas, useLoader } from '@react-three/fiber';
+import { XR, useXR } from '@react-three/xr'; // Use useXR for WebXR control
 import { OrbitControls } from '@react-three/drei';
 import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
 import { initializeApp, getApps } from 'firebase/app';
@@ -97,11 +96,11 @@ const MobileViewer = () => {
         <div className="model-viewer-container">
           <Canvas style={{ width: '100%', height: '500px' }}>
             <XR>
-              <ARButton />
               <ambientLight intensity={0.5} />
               <directionalLight position={[10, 10, 10]} />
               <OrbitControls />
               <Model src={modelSrc} />
+              <ARButton />
             </XR>
           </Canvas>
         </div>
@@ -112,11 +111,24 @@ const MobileViewer = () => {
   );
 };
 
+// Custom Model Component
 const Model = ({ src }) => {
   const gltf = useLoader(GLTFLoader, src);
+  return <primitive object={gltf.scene} scale={0.5} position={[0, 0, 0]} />;
+};
+
+// Custom AR Button for WebXR
+const ARButton = () => {
+  const { store } = useXR();
+
+  const enterARMode = () => {
+    store.enterAR();  // Start AR session
+  };
 
   return (
-    <primitive object={gltf.scene} scale={0.5} position={[0, 0, 0]} />
+    <button onClick={enterARMode} style={{ position: 'absolute', top: '20px', left: '20px', padding: '10px', backgroundColor: '#4CAF50', color: 'white', borderRadius: '5px' }}>
+      Enter AR
+    </button>
   );
 };
 
