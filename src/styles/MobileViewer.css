@@ -11,6 +11,7 @@
   font-family: Arial, sans-serif;
   padding: 20px;
   box-sizing: border-box;
+  position: relative;
 }
 
 /* Three.js canvas styling */
@@ -27,7 +28,8 @@
 
 /* Button styling */
 .upload-button,
-.ar-button {
+.ar-button,
+.hololens-button {
   padding: 12px 20px;
   margin: 10px 0;
   font-size: 16px;
@@ -37,10 +39,13 @@
   border-radius: 8px;
   cursor: pointer;
   transition: background-color 0.3s ease;
+  width: 80%;
+  max-width: 400px;
 }
 
 .upload-button:hover,
-.ar-button:hover {
+.ar-button:hover,
+.hololens-button:hover {
   background-color: #0056b3;
 }
 
@@ -79,19 +84,46 @@
 
 /* HoloLens AR button styling */
 .hololens-button {
-  padding: 12px 20px;
-  margin: 10px 0;
-  font-size: 16px;
-  color: #ffffff;
   background-color: #28a745;
-  border: none;
-  border-radius: 8px;
-  cursor: pointer;
-  transition: background-color 0.3s ease;
 }
 
 .hololens-button:hover {
   background-color: #218838;
+}
+
+/* Interaction hints styling */
+.interaction-hints {
+  position: absolute;
+  bottom: 10%;
+  left: 50%;
+  transform: translateX(-50%);
+  color: #ffffff;
+  font-size: 14px;
+  text-align: center;
+  padding: 10px;
+  background-color: rgba(0, 0, 0, 0.5);
+  border-radius: 8px;
+}
+
+/* Touch feedback circle */
+.touch-feedback {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  background-color: rgba(255, 255, 255, 0.7);
+  border-radius: 50%;
+  pointer-events: none;
+  animation: touch-fade 0.5s ease-out forwards;
+}
+
+@keyframes touch-fade {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+    transform: scale(2);
+  }
 }
 
 /* Responsive design for mobile devices */
@@ -114,6 +146,10 @@
   .loading {
     font-size: 16px;
   }
+
+  .interaction-hints {
+    font-size: 12px;
+  }
 }
 
 /* Fullscreen support for Three.js canvas */
@@ -123,5 +159,11 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
-  overflow: hidden;
+}
+
+/* Zoom and drag feedback */
+.model-interaction {
+  outline: 2px dashed #00ff00;
+  outline-offset: -10px;
+  border-radius: 10px;
 }
