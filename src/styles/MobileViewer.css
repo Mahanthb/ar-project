@@ -1,104 +1,127 @@
-/* Main container styling */
+/* ARViewer container styling */
 .ar-viewer-container {
-    width: 100%;
-    height: 100vh;
-    background-color: #1a1a1a;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    color: #fff;
-    font-family: Arial, sans-serif;
-  }
-  
-  /* Upload button styling */
-  .upload-button {
-    background-color: #4caf50;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    text-align: center;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-    margin-bottom: 15px;
-  }
-  
-  .upload-button:hover {
-    background-color: #45a049;
-  }
-  
-  /* Firebase file selector styling */
-  .firebase-file-selector {
-    width: 90%;
-    max-width: 400px;
-    margin-bottom: 15px;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-  
-  .firebase-file-selector label {
-    color: #ccc;
-    margin-bottom: 5px;
-  }
-  
-  .firebase-file-selector select {
-    width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100vh;
+  background-color: #1a1a1a;
+  color: #ffffff;
+  font-family: Arial, sans-serif;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Three.js canvas styling */
+.threejs-canvas {
+  width: 100%;
+  height: 100%;
+  border: none;
+  outline: none;
+  background-color: #000;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+/* Button styling */
+.upload-button,
+.ar-button {
+  padding: 12px 20px;
+  margin: 10px 0;
+  font-size: 16px;
+  color: #ffffff;
+  background-color: #007bff;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.upload-button:hover,
+.ar-button:hover {
+  background-color: #0056b3;
+}
+
+/* Firebase file selector styling */
+.firebase-file-selector {
+  margin: 15px 0;
+  width: 100%;
+  max-width: 400px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.firebase-file-selector label {
+  margin-bottom: 5px;
+  font-size: 14px;
+  color: #dddddd;
+}
+
+.firebase-file-selector select {
+  width: 100%;
+  padding: 10px;
+  font-size: 14px;
+  color: #333;
+  background-color: #f8f8f8;
+  border: 1px solid #ccc;
+  border-radius: 6px;
+}
+
+/* Loading indicator styling */
+.loading {
+  margin-top: 20px;
+  font-size: 18px;
+  color: #ffcc00;
+}
+
+/* HoloLens AR button styling */
+.hololens-button {
+  padding: 12px 20px;
+  margin: 10px 0;
+  font-size: 16px;
+  color: #ffffff;
+  background-color: #28a745;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background-color 0.3s ease;
+}
+
+.hololens-button:hover {
+  background-color: #218838;
+}
+
+/* Responsive design for mobile devices */
+@media (max-width: 768px) {
+  .ar-viewer-container {
     padding: 10px;
-    border: 1px solid #555;
-    border-radius: 5px;
-    background-color: #2a2a2a;
-    color: #fff;
-    font-size: 14px;
-    appearance: none;
   }
-  
-  /* AR session start button styling */
+
+  .upload-button,
+  .ar-button,
   .hololens-button {
-    background-color: #0078d4;
-    color: white;
-    border: none;
-    padding: 12px 20px;
-    text-align: center;
-    font-size: 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background-color 0.3s ease;
-  }
-  
-  .hololens-button:hover {
-    background-color: #005a9e;
-  }
-  
-  /* Loading spinner styling */
-  .loading {
-    color: #fff;
-    font-size: 18px;
-    margin-top: 20px;
-  }
-  
-  /* Responsive design adjustments */
-  @media (max-width: 600px) {
-    .upload-button,
-    .hololens-button {
-      font-size: 14px;
-      padding: 10px 15px;
-    }
-  
-    .firebase-file-selector select {
-      font-size: 12px;
-      padding: 8px;
-    }
-  }
-  
-  /* Gesture instructions styling */
-  .gesture-instructions {
-    color: #aaa;
     font-size: 14px;
-    margin-top: 10px;
-    text-align: center;
-    max-width: 90%;
+    padding: 10px 16px;
   }
-  
+
+  .firebase-file-selector select {
+    font-size: 12px;
+  }
+
+  .loading {
+    font-size: 16px;
+  }
+}
+
+/* Fullscreen support for Three.js canvas */
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
