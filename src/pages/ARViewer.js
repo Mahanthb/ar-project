@@ -87,7 +87,7 @@ const ARViewer = () => {
 
     try {
       const xrSession = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['local-floor', 'hit-test']
+        requiredFeatures: ['local-floor', 'light-estimation'] // Enable light estimation
       });
 
       const modelViewer = modelViewerRef.current; // Access model-viewer ref
@@ -104,7 +104,7 @@ const ARViewer = () => {
     }
   };
 
-  // Gesture-based interaction setup for mobile (touch gestures)
+  // Gesture-based interaction setup
   useEffect(() => {
     const modelViewer = modelViewerRef.current;
     let initialTouch = null;
@@ -127,7 +127,10 @@ const ARViewer = () => {
         const rotationX = deltaY * 0.1; // Adjust rotation sensitivity as needed
         const rotationY = deltaX * 0.1;
 
-        modelViewer.cameraOrbit = `${rotationY}deg ${rotationX}deg auto`;
+        // Disable rotation for Android
+        if (!/Android/i.test(navigator.userAgent)) {
+          modelViewer.cameraOrbit = `${rotationY}deg ${rotationX}deg auto`;
+        }
       }
     };
 
@@ -182,10 +185,10 @@ const ARViewer = () => {
             alt="A 3D model"
             ar
             ar-modes="webxr scene-viewer quick-look"
-            camera-controls
-            auto-rotate
+            camera-controls="false" // Disable camera controls
+            auto-rotate="false" // Disable auto-rotate
             style={{ width: '100%', height: '500px' }}
-            touch-action="manipulation"
+            touch-action="none" // Prevent touch actions from moving the model
             interaction-prompt="when-focused"
             environment-image="neutral"
             exposure="1"
