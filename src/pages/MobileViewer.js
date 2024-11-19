@@ -1,13 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Canvas, useLoader } from '@react-three/fiber';
-import { XR, useXR } from '@react-three/xr'; // Use useXR for WebXR control
-import { OrbitControls } from '@react-three/drei';
-import { GLTFLoader } from 'three/examples/jsm/loaders/GLTFLoader';
+import '../styles/ARViewer.css';
 import { initializeApp, getApps } from 'firebase/app';
 import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
-import '../styles/MobileViewer.css';
+import * as THREE from 'three';
+import { XRButton } from 'three/addons/webxr/XRButton.js';
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 
-// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCfWYRWOQyNrn9WGv3Wfz_EM47ZpbL_Yqs",
   authDomain: "virtual-world-84ce0.firebaseapp.com",
@@ -27,31 +25,42 @@ if (!getApps().length) {
 
 const storage = getStorage(app);
 
-const MobileViewer = () => {
+const ARViewer = () => {
   const [modelSrc, setModelSrc] = useState('');
   const [firebaseFiles, setFirebaseFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const inputFileRef = useRef(null);
+  const canvasRef = useRef(null);
+  const rendererRef = useRef(null);
+  const sceneRef = useRef(null);
+  const cameraRef = useRef(null);
+  const modelRef = useRef(null);
 
-  // Handle file upload from local storage
-  const handleFileUpload = (event) => {
-    const file = event.target.files[0];
-    if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
-      const url = URL.createObjectURL(file);
-      setModelSrc(url);
-    } else {
-      alert('Please upload a .glb or .gltf file');
-    }
-  };
+  useEffect(() => {
+    initializeThreeJS();
+    loadFirebaseFiles();
+  }, []);
 
-  const triggerFileInput = () => {
-    inputFileRef.current.click();
-  };
+  const initializeThreeJS = () => {
+    const renderer = new THREE.WebGLRenderer({ antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(XRButton.createButton(renderer));
+    canvasRef.current.appendChild(renderer.domElement);
 
-  const handleFirebaseFileUpload = async (url) => {
-    setLoading(true);
-    setModelSrc(url);
-    setLoading(false);
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
+    camera.position.set(0, 1.6, 3);
+
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+    scene.add(light);
+
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+
+    rendererRef.current = renderer;
+    sceneRef.current = scene;
+    cameraRef.current = camera;
   };
 
   const loadFirebaseFiles = async () => {
@@ -66,18 +75,69 @@ const MobileViewer = () => {
     setFirebaseFiles(files);
   };
 
-  useEffect(() => {
-    loadFirebaseFiles();
-  }, []);
+  const loadModel = (url) => {
+    const loader = new GLTFLoader();
+    setLoading(true);
+
+    loader.load(
+      url,
+      (gltf) => {
+        if (modelRef.current) {
+          sceneRef.current.remove(modelRef.current);
+        }
+        const model = gltf.scene;
+        model.position.set(0, 0, -2);
+        sceneRef.current.add(model);
+        modelRef.current = model;
+        setLoading(false);
+      },
+      undefined,
+      (error) => {
+        console.error('Error loading model:', error);
+        setLoading(false);
+      }
+    );
+  };
+
+  const handleFileUpload = (event) => {
+    const file = event.target.files[0];
+    if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
+      const url = URL.createObjectURL(file);
+      loadModel(url);
+    } else {
+      alert('Please upload a .glb or .gltf file');
+    }
+  };
+
+  const handleFirebaseFileUpload = (url) => {
+    loadModel(url);
+  };
+
+  const startARSession = async () => {
+    const renderer = rendererRef.current;
+    try {
+      const session = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['local-floor', 'light-estimation']
+      });
+      renderer.xr.setSession(session);
+
+      session.addEventListener('end', () => {
+        console.log('AR session ended');
+      });
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      alert('Unable to start AR session on this device.');
+    }
+  };
 
   return (
     <div className="ar-viewer-container">
-      <button className="upload-button" onClick={triggerFileInput}>Upload 3D Model</button>
+      <button className="upload-button" onClick={() => document.getElementById('file-input').click()}>Upload 3D Model</button>
       <input
         type="file"
+        id="file-input"
         accept=".glb,.gltf"
         style={{ display: 'none' }}
-        ref={inputFileRef}
         onChange={handleFileUpload}
       />
       <div className="firebase-file-selector">
@@ -92,44 +152,15 @@ const MobileViewer = () => {
         </select>
       </div>
 
-      {modelSrc && (
-        <div className="model-viewer-container">
-          <Canvas style={{ width: '100%', height: '500px' }}>
-            <XR>
-              <ambientLight intensity={0.5} />
-              <directionalLight position={[10, 10, 10]} />
-              <OrbitControls />
-              <Model src={modelSrc} />
-              <ARButton />
-            </XR>
-          </Canvas>
-        </div>
-      )}
+      <div ref={canvasRef} className="threejs-canvas"></div>
+
+      <button className="ar-button" onClick={startARSession}>
+        View in HoloLens
+      </button>
 
       {loading && <div className="loading">Loading...</div>}
     </div>
   );
 };
 
-// Custom Model Component
-const Model = ({ src }) => {
-  const gltf = useLoader(GLTFLoader, src);
-  return <primitive object={gltf.scene} scale={0.5} position={[0, 0, 0]} />;
-};
-
-// Custom AR Button for WebXR
-const ARButton = () => {
-  const { store } = useXR();
-
-  const enterARMode = () => {
-    store.enterAR();  // Start AR session
-  };
-
-  return (
-    <button onClick={enterARMode} style={{ position: 'absolute', top: '20px', left: '20px', padding: '10px', backgroundColor: '#4CAF50', color: 'white', borderRadius: '5px' }}>
-      Enter AR
-    </button>
-  );
-};
-
-export default MobileViewer;
+export default ARViewer;
