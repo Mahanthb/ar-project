@@ -123,48 +123,55 @@ const readAloud = (text) => {
   }; 
 
   // Start AR session using WebXR
-  const startARSession = async () => {
-    if (!navigator.xr) {
-      alert('WebXR is not supported on this device.');
-      return;
-    }
-  
-    try {
-      // Request AR session with light estimation
-      const xrSession = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['local-floor', 'light-estimation'], // Add light-estimation feature
-      });
-  
-      const modelViewer = modelViewerRef.current; // Access model-viewer ref
-      modelViewer.setAttribute('xr', '');
-      modelViewer.xrSession = xrSession;
-      modelViewer.activateAR();
-  
-      // Set up light estimation
-      xrSession.addEventListener('selectstart', (event) => {
-        const lightEstimation = event.session.requestLightEstimation();
-        if (lightEstimation) {
-          lightEstimation.addEventListener('change', (e) => {
-            const { lightIntensity, colorTemperature } = e;
-            
-            // Adjust lighting based on light estimation
-            // For example, adjust model viewer environment lighting
-            modelViewer.setAttribute('environment-image', lightIntensity);
-            modelViewer.setAttribute('shadow-intensity', colorTemperature);
-          });
-        }
-      });
-  
-      xrSession.addEventListener('end', () => {
-        modelViewer.xrSession = null;
-      });
-  
-    } catch (error) {
-      console.error('Failed to start AR session:', error);
-      alert('Unable to start AR session on this device.');
-    }
-  };
-  
+ const startARSession = async () => {
+  if (!navigator.xr) {
+    alert('WebXR is not supported on this device.');
+    return;
+  }
+
+  try {
+    // Request AR session with light estimation
+    const xrSession = await navigator.xr.requestSession('immersive-ar', {
+      requiredFeatures: ['local-floor', 'light-estimation'], // Request light-estimation feature
+    });
+
+    const modelViewer = modelViewerRef.current; // Access model-viewer ref
+    modelViewer.setAttribute('xr', '');
+    modelViewer.xrSession = xrSession;
+    modelViewer.activateAR();
+
+    // Wait for the AR session to be established before enabling light estimation
+    xrSession.addEventListener('selectstart', async () => {
+      try {
+        const lightEstimation = await xrSession.requestLightEstimation();
+        
+        // Listen for light changes
+        lightEstimation.addEventListener('change', (e) => {
+          const { lightIntensity, colorTemperature } = e.data;
+
+          // Log the light estimation for debugging
+          console.log('Light Intensity:', lightIntensity);
+          console.log('Color Temperature:', colorTemperature);
+
+          // Adjust the lighting of the model based on light estimation
+          modelViewer.setAttribute('shadow-intensity', lightIntensity);
+          modelViewer.setAttribute('environment-image', colorTemperature); // Adjust color temperature
+        });
+      } catch (err) {
+        console.error('Light estimation not supported or error:', err);
+      }
+    });
+
+    xrSession.addEventListener('end', () => {
+      modelViewer.xrSession = null;
+    });
+
+  } catch (error) {
+    console.error('Failed to start AR session:', error);
+    alert('Unable to start AR session on this device.');
+  }
+};
+
 
   return (
     <div className="ar-viewer-container">
