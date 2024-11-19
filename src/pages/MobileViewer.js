@@ -1,12 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
-import '../styles/MobileViewer.css';
+import '@google/model-viewer';
+import '../styles/ARViewer.css';
 import { initializeApp, getApps } from 'firebase/app';
 import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
-import * as THREE from 'three';
-import { XRButton } from 'three/addons/webxr/XRButton.js';
-import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
-import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
+// Firebase configuration
 const firebaseConfig = {
   apiKey: "AIzaSyCfWYRWOQyNrn9WGv3Wfz_EM47ZpbL_Yqs",
   authDomain: "virtual-world-84ce0.firebaseapp.com",
@@ -26,59 +24,26 @@ if (!getApps().length) {
 
 const storage = getStorage(app);
 
-const ARViewer = () => {
+const MuseumViewer = () => {
   const [modelSrc, setModelSrc] = useState('');
   const [firebaseFiles, setFirebaseFiles] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [isMobile, setIsMobile] = useState(false);
-  const canvasRef = useRef(null);
-  const rendererRef = useRef(null);
-  const sceneRef = useRef(null);
-  const cameraRef = useRef(null);
-  const modelRef = useRef(null);
-  const controlsRef = useRef(null);
-  const hitTestSourceRef = useRef(null);
+  const [isWebXRSupported, setIsWebXRSupported] = useState(false);
+  const [modelHistory, setModelHistory] = useState({});
+  const [historyText, setHistoryText] = useState('');
+  const inputFileRef = useRef(null);
+  const modelViewerRef = useRef(null); // Reference for model-viewer
 
+  // Check WebXR support for AR glass compatibility
   useEffect(() => {
-    checkIfMobile();
-    initializeThreeJS();
-    loadFirebaseFiles();
+    if (navigator.xr) {
+      navigator.xr.isSessionSupported('immersive-ar').then((supported) => {
+        setIsWebXRSupported(supported);
+      });
+    }
   }, []);
 
-  const checkIfMobile = () => {
-    const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
-    setIsMobile(isMobileDevice && 'xr' in navigator);
-  };
-
-  const initializeThreeJS = () => {
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.setClearColor(0xeeeeee); // Set background color of the canvas to light gray
-    renderer.xr.enabled = true;
-    canvasRef.current.appendChild(renderer.domElement);
-
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
-    camera.position.set(0, 1.6, 3);
-
-    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2); // Increased intensity
-    scene.add(light);
-
-    const controls = new OrbitControls(camera, renderer.domElement);
-    controls.enableZoom = true;
-    controls.enableRotate = true;
-    controlsRef.current = controls;
-
-    renderer.setAnimationLoop(() => {
-      controls.update();
-      renderer.render(scene, camera);
-    });
-
-    rendererRef.current = renderer;
-    sceneRef.current = scene;
-    cameraRef.current = camera;
-  };
-
+  // Load models from Firebase
   const loadFirebaseFiles = async () => {
     const listRef = ref(storage, '/');
     const res = await listAll(listRef);
@@ -91,97 +56,74 @@ const ARViewer = () => {
     setFirebaseFiles(files);
   };
 
-  const loadModel = (url) => {
-    const loader = new GLTFLoader();
-    setLoading(true);
-
-    loader.load(
-      url,
-      (gltf) => {
-        if (modelRef.current) {
-          sceneRef.current.remove(modelRef.current);
-        }
-        const model = gltf.scene;
-        model.position.set(0, 0, -2);
-        model.scale.set(1, 1, 1);
-        sceneRef.current.add(model);
-        modelRef.current = model;
-        setLoading(false);
-      },
-      undefined,
-      (error) => {
-        console.error('Error loading model:', error);
-        setLoading(false);
-      }
-    );
+  // Load metadata (history) for each model
+  const loadMetadata = async () => {
+    const metadataRef = ref(storage, 'metadata.json');
+    const metadataUrl = await getDownloadURL(metadataRef);
+    const response = await fetch(metadataUrl);
+    const data = await response.json();
+    setModelHistory(data);
   };
 
+  useEffect(() => {
+    loadFirebaseFiles(); // Load models
+    loadMetadata();      // Load metadata
+  }, []);
+
+  // Handle file upload from local storage
   const handleFileUpload = (event) => {
     const file = event.target.files[0];
     if (file && (file.name.endsWith('.glb') || file.name.endsWith('.gltf'))) {
       const url = URL.createObjectURL(file);
-      loadModel(url);
+      setModelSrc(url);
+      setHistoryText('History not available for this model.');
     } else {
       alert('Please upload a .glb or .gltf file');
     }
   };
 
-  const handleFirebaseFileUpload = (url) => {
-    loadModel(url);
+  const triggerFileInput = () => {
+    inputFileRef.current.click();
   };
 
+  const handleFirebaseFileUpload = async (url, name) => {
+    setLoading(true);
+    setModelSrc(url);
+    const description = modelHistory[name] || 'History not available for this model.';
+    setHistoryText(description);
+    readAloud(description); // Call text-to-speech
+    setLoading(false);
+  };
+
+  // Text-to-speech function
+  const readAloud = (text) => {
+    const speech = new SpeechSynthesisUtterance();
+    speech.text = text;
+    speech.lang = 'en-US';
+    speech.rate = 1;
+    speech.pitch = 1;
+    window.speechSynthesis.speak(speech);
+  };
+
+  // Start AR session using WebXR
   const startARSession = async () => {
-    if (!isMobile) {
-      alert('AR mode is only supported on mobile devices.');
+    if (!navigator.xr) {
+      alert('WebXR is not supported on this device.');
       return;
     }
 
-    const renderer = rendererRef.current;
-    const camera = cameraRef.current;
-    const scene = sceneRef.current;
-
     try {
-      const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['local-floor', 'hit-test'],
-      });
-      renderer.xr.setSession(session);
-
-      const hitTestSource = await session.requestReferenceSpace('viewer').then((referenceSpace) =>
-        session.requestHitTestSource({ space: referenceSpace })
-      );
-
-      hitTestSourceRef.current = hitTestSource;
-      const viewerSpace = await session.requestReferenceSpace('viewer');
-      const localSpace = await session.requestReferenceSpace('local-floor');
-
-      session.addEventListener('end', () => {
-        console.log('AR session ended');
+      const xrSession = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['local-floor']
       });
 
-      let modelPlaced = false;
+      const modelViewer = modelViewerRef.current; // Access model-viewer ref
+      modelViewer.setAttribute('xr', '');
+      modelViewer.xrSession = xrSession;
+      modelViewer.activateAR();
 
-      const onSelect = () => {
-        modelPlaced = true;
-      };
-
-      session.addEventListener('select', onSelect);
-
-      renderer.setAnimationLoop((timestamp, frame) => {
-        if (frame) {
-          const hitTestResults = frame.getHitTestResults(hitTestSourceRef.current);
-
-          if (hitTestResults.length > 0 && !modelPlaced) {
-            const hit = hitTestResults[0];
-            const pose = hit.getPose(localSpace);
-
-            if (modelRef.current) {
-              modelRef.current.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
-              modelRef.current.visible = true;
-            }
-          }
-        }
-
-        renderer.render(scene, camera);
+      xrSession.addEventListener('end', () => {
+        modelViewer.xrSession = null;
       });
     } catch (error) {
       console.error('Failed to start AR session:', error);
@@ -191,17 +133,20 @@ const ARViewer = () => {
 
   return (
     <div className="ar-viewer-container">
-      <button className="upload-button" onClick={() => document.getElementById('file-input').click()}>Upload 3D Model</button>
+      <button className="upload-button" onClick={triggerFileInput}>Upload 3D Model</button>
       <input
         type="file"
-        id="file-input"
         accept=".glb,.gltf"
         style={{ display: 'none' }}
+        ref={inputFileRef}
         onChange={handleFileUpload}
       />
       <div className="firebase-file-selector">
         <label>Select 3D Model from Firebase:</label>
-        <select onChange={(e) => handleFirebaseFileUpload(e.target.value)}>
+        <select onChange={(e) => {
+          const selectedFile = firebaseFiles.find(file => file.url === e.target.value);
+          handleFirebaseFileUpload(selectedFile.url, selectedFile.name);
+        }}>
           <option value="">Select a model...</option>
           {firebaseFiles.map((file) => (
             <option key={file.url} value={file.url}>
@@ -211,12 +156,53 @@ const ARViewer = () => {
         </select>
       </div>
 
-      <div ref={canvasRef} className="threejs-canvas"></div>
+      {modelSrc && (
+        <div className="model-viewer-container">
+          <model-viewer
+            ref={modelViewerRef}
+            src={modelSrc}
+            alt="A 3D model"
+            ar
+            ar-modes="webxr scene-viewer quick-look"
+            camera-controls
+            auto-rotate
+            style={{ width: '100%', height: '500px' }}
+            touch-action="manipulation"
+            interaction-prompt="when-focused"
+            environment-image="neutral"
+            exposure="1"
+            shadow-intensity="1"
+            shadow-softness="0.5"
+            min-camera-orbit="auto auto 0deg"
+            max-camera-orbit="auto auto 360deg"
+            min-field-of-view="10deg"
+            max-field-of-view="45deg"
+          >
+            <button className="ar-button" slot="ar-button">View in AR</button>
+          </model-viewer>
+        </div>
+      )}
 
-      {isMobile && (
-        <button className="ar-button" onClick={startARSession}>
-          View in AR
-        </button>
+      {modelSrc && (
+        <div className="history-section">
+          <h3>History</h3>
+          <p>{historyText}</p>
+          <button onClick={() => readAloud(historyText)}>🔊 Read Aloud</button>
+        </div>
+      )}
+
+      {isWebXRSupported && modelSrc && (
+        <div className="hololens-ar">
+          <button
+            className="ar-button hololens-button"
+            onClick={startARSession}
+          >
+            View in HoloLens
+          </button>
+          <p className="ar-support-text">
+            Use a WebXR-compatible browser (e.g., Microsoft Edge) on HoloLens to access this view.
+          </p>
+        </div>
       )}
 
       {loading && <div className="loading">Loading...</div>}
@@ -224,4 +210,4 @@ const ARViewer = () => {
   );
 };
 
-export default ARViewer;
+export default MuseumViewer;
