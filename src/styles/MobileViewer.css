@@ -3,12 +3,12 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
+  justify-content: flex-start;
   width: 100%;
   height: 100vh;
-  background-color: #1a1a1a;
-  color: #ffffff;
-  font-family: Arial, sans-serif;
+  background-color: #121212;
+  color: #e0e0e0;
+  font-family: 'Roboto', sans-serif;
   padding: 20px;
   box-sizing: border-box;
   position: relative;
@@ -17,100 +17,130 @@
 /* Three.js canvas styling */
 .threejs-canvas {
   width: 100%;
-  height: 100%;
+  height: calc(100% - 160px);
   border: none;
   outline: none;
-  background-color: #000;
+  background-color: #202020;
+  border-radius: 12px;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
   display: flex;
   justify-content: center;
   align-items: center;
+  overflow: hidden;
 }
 
 /* Button styling */
 .upload-button,
 .ar-button,
 .hololens-button {
-  padding: 12px 20px;
+  padding: 14px 24px;
   margin: 10px 0;
-  font-size: 16px;
+  font-size: 15px;
   color: #ffffff;
-  background-color: #007bff;
+  background-color: #1e88e5;
   border: none;
-  border-radius: 8px;
+  border-radius: 10px;
   cursor: pointer;
-  transition: background-color 0.3s ease;
-  width: 80%;
-  max-width: 400px;
+  transition: all 0.3s ease;
+  width: 90%;
+  max-width: 350px;
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 .upload-button:hover,
 .ar-button:hover,
 .hololens-button:hover {
-  background-color: #0056b3;
+  background-color: #1565c0;
+  transform: translateY(-2px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.upload-button:active,
+.ar-button:active,
+.hololens-button:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
 }
 
 /* Firebase file selector styling */
 .firebase-file-selector {
-  margin: 15px 0;
+  margin: 20px 0;
   width: 100%;
-  max-width: 400px;
+  max-width: 350px;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: flex-start;
 }
 
 .firebase-file-selector label {
-  margin-bottom: 5px;
+  margin-bottom: 8px;
   font-size: 14px;
-  color: #dddddd;
+  color: #b0bec5;
 }
 
 .firebase-file-selector select {
   width: 100%;
-  padding: 10px;
+  padding: 12px;
   font-size: 14px;
-  color: #333;
-  background-color: #f8f8f8;
-  border: 1px solid #ccc;
-  border-radius: 6px;
+  color: #212121;
+  background-color: #f5f5f5;
+  border: 1px solid #b0bec5;
+  border-radius: 8px;
+  transition: border-color 0.3s;
+}
+
+.firebase-file-selector select:focus {
+  border-color: #1e88e5;
+  outline: none;
 }
 
 /* Loading indicator styling */
 .loading {
   margin-top: 20px;
   font-size: 18px;
-  color: #ffcc00;
+  color: #ffca28;
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 0.8;
+  }
+  50% {
+    opacity: 1;
+  }
 }
 
 /* HoloLens AR button styling */
 .hololens-button {
-  background-color: #28a745;
+  background-color: #43a047;
 }
 
 .hololens-button:hover {
-  background-color: #218838;
+  background-color: #2e7d32;
 }
 
 /* Interaction hints styling */
 .interaction-hints {
   position: absolute;
-  bottom: 10%;
+  bottom: 12%;
   left: 50%;
   transform: translateX(-50%);
   color: #ffffff;
   font-size: 14px;
   text-align: center;
-  padding: 10px;
-  background-color: rgba(0, 0, 0, 0.5);
-  border-radius: 8px;
+  padding: 12px;
+  background-color: rgba(0, 0, 0, 0.6);
+  border-radius: 10px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
 }
 
 /* Touch feedback circle */
 .touch-feedback {
   position: absolute;
-  width: 20px;
-  height: 20px;
-  background-color: rgba(255, 255, 255, 0.7);
+  width: 24px;
+  height: 24px;
+  background-color: rgba(255, 255, 255, 0.8);
   border-radius: 50%;
   pointer-events: none;
   animation: touch-fade 0.5s ease-out forwards;
@@ -136,11 +166,11 @@
   .ar-button,
   .hololens-button {
     font-size: 14px;
-    padding: 10px 16px;
+    padding: 12px 18px;
   }
 
   .firebase-file-selector select {
-    font-size: 12px;
+    font-size: 13px;
   }
 
   .loading {
@@ -149,6 +179,7 @@
 
   .interaction-hints {
     font-size: 12px;
+    padding: 8px;
   }
 }
 
@@ -159,11 +190,22 @@ body {
   padding: 0;
   width: 100%;
   height: 100%;
+  background-color: #121212;
 }
 
 /* Zoom and drag feedback */
 .model-interaction {
-  outline: 2px dashed #00ff00;
+  outline: 2px dashed #00e676;
   outline-offset: -10px;
   border-radius: 10px;
+  animation: interaction-highlight 1s infinite;
+}
+
+@keyframes interaction-highlight {
+  0%, 100% {
+    outline-color: #00e676;
+  }
+  50% {
+    outline-color: #76ff03;
+  }
 }
