@@ -79,63 +79,61 @@ const ARViewer = () => {
   }, []);
 
   // Start AR session using WebXR
-const startARSession = async () => {
-  if (!navigator.xr) {
-    alert('WebXR is not supported on this device.');
-    return;
-  }
+  const startARSession = async () => {
+    if (!navigator.xr) {
+      alert('WebXR is not supported on this device.');
+      return;
+    }
 
-  try {
-    const xrSession = await navigator.xr.requestSession('immersive-ar', {
-      requiredFeatures: ['local-floor']
-    });
+    try {
+      const xrSession = await navigator.xr.requestSession('immersive-ar', {
+        requiredFeatures: ['local-floor', 'hit-test']
+      });
 
-    const modelViewer = modelViewerRef.current; // Access model-viewer ref
-    modelViewer.setAttribute('xr', '');
-    modelViewer.xrSession = xrSession;
-    modelViewer.activateAR();
+      const modelViewer = modelViewerRef.current; // Access model-viewer ref
+      modelViewer.setAttribute('xr', '');
+      modelViewer.xrSession = xrSession;
+      modelViewer.activateAR();
 
-    xrSession.addEventListener('end', () => {
-      modelViewer.xrSession = null;
-    });
-  } catch (error) {
-    console.error('Failed to start AR session:', error);
-    alert('Unable to start AR session on this device.');
-  }
-};
-
-
-  // Gesture-based interaction setup
-// Gesture interaction handlers
-useEffect(() => {
-  const modelViewer = modelViewerRef.current;
-  let initialTouch = null;
-
-  const handleGestureStart = (event) => {
-    if (event.touches.length === 1) {
-      initialTouch = {
-        x: event.touches[0].clientX,
-        y: event.touches[0].clientY,
-      };
+      xrSession.addEventListener('end', () => {
+        modelViewer.xrSession = null;
+      });
+    } catch (error) {
+      console.error('Failed to start AR session:', error);
+      alert('Unable to start AR session on this device.');
     }
   };
 
-  const handleGestureMove = (event) => {
-    if (initialTouch && event.touches.length === 1) {
-      const deltaX = event.touches[0].clientX - initialTouch.x;
-      const deltaY = event.touches[0].clientY - initialTouch.y;
+  // Gesture-based interaction setup for mobile (touch gestures)
+  useEffect(() => {
+    const modelViewer = modelViewerRef.current;
+    let initialTouch = null;
 
-      // Adjust the rotation based on gesture movement
-      const rotationX = deltaY * 0.1; // Adjust rotation sensitivity as needed
-      const rotationY = deltaX * 0.1;
+    const handleGestureStart = (event) => {
+      if (event.touches.length === 1) {
+        initialTouch = {
+          x: event.touches[0].clientX,
+          y: event.touches[0].clientY,
+        };
+      }
+    };
 
-      modelViewer.cameraOrbit = `${rotationY}deg ${rotationX}deg auto`;
-    }
-  };
+    const handleGestureMove = (event) => {
+      if (initialTouch && event.touches.length === 1) {
+        const deltaX = event.touches[0].clientX - initialTouch.x;
+        const deltaY = event.touches[0].clientY - initialTouch.y;
 
-  const handleGestureEnd = () => {
-    initialTouch = null; // Reset initial touch point
-  };
+        // Adjust the rotation based on gesture movement
+        const rotationX = deltaY * 0.1; // Adjust rotation sensitivity as needed
+        const rotationY = deltaX * 0.1;
+
+        modelViewer.cameraOrbit = `${rotationY}deg ${rotationX}deg auto`;
+      }
+    };
+
+    const handleGestureEnd = () => {
+      initialTouch = null; // Reset initial touch point
+    };
 
     if (modelViewer) {
       modelViewer.addEventListener('pointerdown', handleGestureStart);
