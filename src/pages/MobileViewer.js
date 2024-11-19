@@ -37,6 +37,7 @@ const ARViewer = () => {
   const cameraRef = useRef(null);
   const modelRef = useRef(null);
   const controlsRef = useRef(null);
+  const hitTestSourceRef = useRef(null);
 
   useEffect(() => {
     checkIfMobile();
@@ -52,6 +53,7 @@ const ARViewer = () => {
   const initializeThreeJS = () => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setClearColor(0xeeeeee); // Set background color of the canvas to light gray
     renderer.xr.enabled = true;
     canvasRef.current.appendChild(renderer.domElement);
 
@@ -59,7 +61,7 @@ const ARViewer = () => {
     const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.1, 1000);
     camera.position.set(0, 1.6, 3);
 
-    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
+    const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 2); // Increased intensity
     scene.add(light);
 
     const controls = new OrbitControls(camera, renderer.domElement);
@@ -133,51 +135,52 @@ const ARViewer = () => {
       alert('AR mode is only supported on mobile devices.');
       return;
     }
-  
+
     const renderer = rendererRef.current;
     const camera = cameraRef.current;
     const scene = sceneRef.current;
-  
+
     try {
       const session = await navigator.xr.requestSession('immersive-ar', {
         requiredFeatures: ['local-floor', 'hit-test'],
       });
       renderer.xr.setSession(session);
-  
+
       const hitTestSource = await session.requestReferenceSpace('viewer').then((referenceSpace) =>
         session.requestHitTestSource({ space: referenceSpace })
       );
-  
+
+      hitTestSourceRef.current = hitTestSource;
       const viewerSpace = await session.requestReferenceSpace('viewer');
       const localSpace = await session.requestReferenceSpace('local-floor');
-  
+
       session.addEventListener('end', () => {
         console.log('AR session ended');
       });
-  
+
       let modelPlaced = false;
-  
+
       const onSelect = () => {
         modelPlaced = true;
       };
-  
+
       session.addEventListener('select', onSelect);
-  
+
       renderer.setAnimationLoop((timestamp, frame) => {
         if (frame) {
-          const hitTestResults = frame.getHitTestResults(hitTestSource);
-  
+          const hitTestResults = frame.getHitTestResults(hitTestSourceRef.current);
+
           if (hitTestResults.length > 0 && !modelPlaced) {
             const hit = hitTestResults[0];
             const pose = hit.getPose(localSpace);
-  
+
             if (modelRef.current) {
               modelRef.current.position.set(pose.transform.position.x, pose.transform.position.y, pose.transform.position.z);
               modelRef.current.visible = true;
             }
           }
         }
-  
+
         renderer.render(scene, camera);
       });
     } catch (error) {
@@ -185,63 +188,6 @@ const ARViewer = () => {
       alert('Unable to start AR session on this device.');
     }
   };
-
-  useEffect(() => {
-    if (isMobile) {
-      window.addEventListener('touchstart', handleTouchStart, false);
-      window.addEventListener('touchmove', handleTouchMove, false);
-      window.addEventListener('touchend', handleTouchEnd, false);
-    }
-  
-    return () => {
-      if (isMobile) {
-        window.removeEventListener('touchstart', handleTouchStart);
-        window.removeEventListener('touchmove', handleTouchMove);
-        window.removeEventListener('touchend', handleTouchEnd);
-      }
-    };
-  }, [isMobile]);
-  
-  let initialDistance = 0;
-  let lastTouchX = 0;
-  let lastTouchY = 0;
-  
-  const handleTouchStart = (event) => {
-    if (event.touches.length === 2) {
-      const dx = event.touches[0].pageX - event.touches[1].pageX;
-      const dy = event.touches[0].pageY - event.touches[1].pageY;
-      initialDistance = Math.sqrt(dx * dx + dy * dy);
-    } else if (event.touches.length === 1) {
-      lastTouchX = event.touches[0].pageX;
-      lastTouchY = event.touches[0].pageY;
-    }
-  };
-  
-  const handleTouchMove = (event) => {
-    if (event.touches.length === 2 && modelRef.current) {
-      const dx = event.touches[0].pageX - event.touches[1].pageX;
-      const dy = event.touches[0].pageY - event.touches[1].pageY;
-      const distance = Math.sqrt(dx * dx + dy * dy);
-  
-      const scaleChange = distance / initialDistance;
-      modelRef.current.scale.multiplyScalar(scaleChange);
-      initialDistance = distance;
-    } else if (event.touches.length === 1 && modelRef.current) {
-      const deltaX = event.touches[0].pageX - lastTouchX;
-      const deltaY = event.touches[0].pageY - lastTouchY;
-  
-      modelRef.current.position.x += deltaX * 0.001;
-      modelRef.current.position.y -= deltaY * 0.001;
-  
-      lastTouchX = event.touches[0].pageX;
-      lastTouchY = event.touches[0].pageY;
-    }
-  };
-  
-  const handleTouchEnd = () => {
-    initialDistance = 0;
-  };
-  
 
   return (
     <div className="ar-viewer-container">
