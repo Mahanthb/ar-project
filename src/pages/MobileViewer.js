@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import '../styles/ARViewer.css';
+import '../styles/MobileViewer.css';
 import { initializeApp, getApps } from 'firebase/app';
 import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
 import * as THREE from 'three';
@@ -34,6 +34,8 @@ const ARViewer = () => {
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const modelRef = useRef(null);
+  const touchStartDistanceRef = useRef(0);
+  const initialScaleRef = useRef(1);
 
   useEffect(() => {
     initializeThreeJS();
@@ -61,6 +63,8 @@ const ARViewer = () => {
     rendererRef.current = renderer;
     sceneRef.current = scene;
     cameraRef.current = camera;
+
+    addTouchEventListeners();
   };
 
   const loadFirebaseFiles = async () => {
@@ -87,6 +91,7 @@ const ARViewer = () => {
         }
         const model = gltf.scene;
         model.position.set(0, 0, -2);
+        model.scale.set(1, 1, 1);
         sceneRef.current.add(model);
         modelRef.current = model;
         setLoading(false);
@@ -111,6 +116,36 @@ const ARViewer = () => {
 
   const handleFirebaseFileUpload = (url) => {
     loadModel(url);
+  };
+
+  const addTouchEventListeners = () => {
+    canvasRef.current.addEventListener('touchstart', handleTouchStart, false);
+    canvasRef.current.addEventListener('touchmove', handleTouchMove, false);
+  };
+
+  const handleTouchStart = (event) => {
+    if (event.touches.length === 2) {
+      touchStartDistanceRef.current = getDistance(event.touches[0], event.touches[1]);
+      initialScaleRef.current = modelRef.current ? modelRef.current.scale.x : 1;
+    }
+  };
+
+  const handleTouchMove = (event) => {
+    if (event.touches.length === 2 && modelRef.current) {
+      const currentDistance = getDistance(event.touches[0], event.touches[1]);
+      const scaleFactor = currentDistance / touchStartDistanceRef.current;
+      modelRef.current.scale.set(
+        initialScaleRef.current * scaleFactor,
+        initialScaleRef.current * scaleFactor,
+        initialScaleRef.current * scaleFactor
+      );
+    }
+  };
+
+  const getDistance = (touch1, touch2) => {
+    const dx = touch1.clientX - touch2.clientX;
+    const dy = touch1.clientY - touch2.clientY;
+    return Math.sqrt(dx * dx + dy * dy);
   };
 
   const startARSession = async () => {
