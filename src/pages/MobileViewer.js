@@ -5,6 +5,7 @@ import { getStorage, ref, listAll, getDownloadURL } from 'firebase/storage';
 import * as THREE from 'three';
 import { XRButton } from 'three/addons/webxr/XRButton.js';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 
 const firebaseConfig = {
   apiKey: "AIzaSyCfWYRWOQyNrn9WGv3Wfz_EM47ZpbL_Yqs",
@@ -29,24 +30,29 @@ const ARViewer = () => {
   const [modelSrc, setModelSrc] = useState('');
   const [firebaseFiles, setFirebaseFiles] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [isMobile, setIsMobile] = useState(false);
   const canvasRef = useRef(null);
   const rendererRef = useRef(null);
   const sceneRef = useRef(null);
   const cameraRef = useRef(null);
   const modelRef = useRef(null);
-  const touchStartDistanceRef = useRef(0);
-  const initialScaleRef = useRef(1);
+  const controlsRef = useRef(null);
 
   useEffect(() => {
+    checkIfMobile();
     initializeThreeJS();
     loadFirebaseFiles();
   }, []);
+
+  const checkIfMobile = () => {
+    const isMobileDevice = /Mobi|Android/i.test(navigator.userAgent);
+    setIsMobile(isMobileDevice && 'xr' in navigator);
+  };
 
   const initializeThreeJS = () => {
     const renderer = new THREE.WebGLRenderer({ antialias: true });
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.xr.enabled = true;
-    document.body.appendChild(XRButton.createButton(renderer));
     canvasRef.current.appendChild(renderer.domElement);
 
     const scene = new THREE.Scene();
@@ -56,15 +62,19 @@ const ARViewer = () => {
     const light = new THREE.HemisphereLight(0xffffff, 0xbbbbff, 1);
     scene.add(light);
 
+    const controls = new OrbitControls(camera, renderer.domElement);
+    controls.enableZoom = true;
+    controls.enableRotate = true;
+    controlsRef.current = controls;
+
     renderer.setAnimationLoop(() => {
+      controls.update();
       renderer.render(scene, camera);
     });
 
     rendererRef.current = renderer;
     sceneRef.current = scene;
     cameraRef.current = camera;
-
-    addTouchEventListeners();
   };
 
   const loadFirebaseFiles = async () => {
@@ -118,41 +128,16 @@ const ARViewer = () => {
     loadModel(url);
   };
 
-  const addTouchEventListeners = () => {
-    canvasRef.current.addEventListener('touchstart', handleTouchStart, false);
-    canvasRef.current.addEventListener('touchmove', handleTouchMove, false);
-  };
-
-  const handleTouchStart = (event) => {
-    if (event.touches.length === 2) {
-      touchStartDistanceRef.current = getDistance(event.touches[0], event.touches[1]);
-      initialScaleRef.current = modelRef.current ? modelRef.current.scale.x : 1;
-    }
-  };
-
-  const handleTouchMove = (event) => {
-    if (event.touches.length === 2 && modelRef.current) {
-      const currentDistance = getDistance(event.touches[0], event.touches[1]);
-      const scaleFactor = currentDistance / touchStartDistanceRef.current;
-      modelRef.current.scale.set(
-        initialScaleRef.current * scaleFactor,
-        initialScaleRef.current * scaleFactor,
-        initialScaleRef.current * scaleFactor
-      );
-    }
-  };
-
-  const getDistance = (touch1, touch2) => {
-    const dx = touch1.clientX - touch2.clientX;
-    const dy = touch1.clientY - touch2.clientY;
-    return Math.sqrt(dx * dx + dy * dy);
-  };
-
   const startARSession = async () => {
+    if (!isMobile) {
+      alert('AR mode is only supported on mobile devices.');
+      return;
+    }
+
     const renderer = rendererRef.current;
     try {
       const session = await navigator.xr.requestSession('immersive-ar', {
-        requiredFeatures: ['local-floor', 'light-estimation']
+        requiredFeatures: ['local-floor', 'hit-test']
       });
       renderer.xr.setSession(session);
 
@@ -189,9 +174,11 @@ const ARViewer = () => {
 
       <div ref={canvasRef} className="threejs-canvas"></div>
 
-      <button className="ar-button" onClick={startARSession}>
-        View in HoloLens
-      </button>
+      {isMobile && (
+        <button className="ar-button" onClick={startARSession}>
+          View in AR
+        </button>
+      )}
 
       {loading && <div className="loading">Loading...</div>}
     </div>
